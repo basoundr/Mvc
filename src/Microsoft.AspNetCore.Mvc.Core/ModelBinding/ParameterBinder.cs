@@ -71,7 +71,7 @@ namespace Microsoft.AspNetCore.Mvc.ModelBinding
         /// <param name="parameter">The <see cref="ParameterDescriptor"/></param>
         /// <param name="value">The initial model value.</param>
         /// <returns>The result of model binding.</returns>
-        public virtual async Task<ModelBindingResult> BindModelAsync(
+        public virtual Task<ModelBindingResult> BindModelAsync(
             ActionContext actionContext,
             IValueProvider valueProvider,
             ParameterDescriptor parameter,
@@ -100,15 +100,52 @@ namespace Microsoft.AspNetCore.Mvc.ModelBinding
                 CacheToken = parameter,
             });
 
+            return BindModelAsync(
+                actionContext,
+                binder,
+                valueProvider,
+                parameter,
+                metadata,
+                value);
+        }
+
+        public virtual async Task<ModelBindingResult> BindModelAsync(
+            ActionContext actionContext,
+            IModelBinder modelBinder,
+            IValueProvider valueProvider,
+            ParameterDescriptor parameter,
+            ModelMetadata modelMetadata,
+            object value)
+        {
+            if (actionContext == null)
+            {
+                throw new ArgumentNullException(nameof(actionContext));
+            }
+
+            if (modelBinder == null)
+            {
+                throw new ArgumentNullException(nameof(modelBinder));
+            }
+
+            if (valueProvider == null)
+            {
+                throw new ArgumentNullException(nameof(valueProvider));
+            }
+
+            if (parameter == null)
+            {
+                throw new ArgumentNullException(nameof(parameter));
+            }
+
             var modelBindingContext = DefaultModelBindingContext.CreateBindingContext(
                 actionContext,
                 valueProvider,
-                metadata,
+                modelMetadata,
                 parameter.BindingInfo,
                 parameter.Name);
             modelBindingContext.Model = value;
 
-            var parameterModelName = parameter.BindingInfo?.BinderModelName ?? metadata.BinderModelName;
+            var parameterModelName = parameter.BindingInfo?.BinderModelName ?? modelMetadata.BinderModelName;
             if (parameterModelName != null)
             {
                 // The name was set explicitly, always use that as the prefix.
@@ -125,7 +162,7 @@ namespace Microsoft.AspNetCore.Mvc.ModelBinding
                 modelBindingContext.ModelName = string.Empty;
             }
 
-            await binder.BindModelAsync(modelBindingContext);
+            await modelBinder.BindModelAsync(modelBindingContext);
 
             var modelBindingResult = modelBindingContext.Result;
             if (modelBindingResult.IsModelSet)
