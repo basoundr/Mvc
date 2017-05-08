@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc.Abstractions;
@@ -25,7 +24,6 @@ namespace Microsoft.AspNetCore.Mvc.Internal
         private readonly IModelMetadataProvider _modelMetadataProvider;
 
         private readonly ControllerContext _controllerContext;
-        private readonly ObjectMethodExecutor _executor;
 
         private object _controller;
         private Dictionary<string, object> _arguments;
@@ -45,8 +43,7 @@ namespace Microsoft.AspNetCore.Mvc.Internal
             ILogger logger,
             DiagnosticSource diagnosticSource,
             ControllerContext controllerContext,
-            IFilterMetadata[] filters,
-            ObjectMethodExecutor objectMethodExecutor)
+            IFilterMetadata[] filters)
             : base(diagnosticSource, logger, controllerContext, filters, controllerContext.ValueProviderFactories)
         {
 
@@ -60,17 +57,13 @@ namespace Microsoft.AspNetCore.Mvc.Internal
                 throw new ArgumentNullException(nameof(parameterBinder));
             }
 
-            if (objectMethodExecutor == null)
-            {
-                throw new ArgumentNullException(nameof(objectMethodExecutor));
-            }
-
             _controllerFactory = controllerFactory;
             _parameterBinder = parameterBinder;
             _modelMetadataProvider = modelMetadataProvider;
             _controllerContext = controllerContext;
-            _executor = objectMethodExecutor;
         }
+
+        internal ObjectMethodExecutor Executor { get; set; }
 
         protected override void ReleaseResources()
         {
@@ -758,7 +751,7 @@ namespace Microsoft.AspNetCore.Mvc.Internal
         private async Task InvokeActionMethodAsync()
         {
             var controllerContext = _controllerContext;
-            var executor = _executor;
+            var executor = Executor;
             var controller = _controller;
             var arguments = _arguments;
             var orderedArguments = ControllerActionExecutor.PrepareArguments(arguments, executor);
@@ -800,24 +793,24 @@ namespace Microsoft.AspNetCore.Mvc.Internal
                             Resources.FormatActionResult_ActionReturnValueCannotBeNull(typeof(IActionResult)));
                     }
                 }
-                else if (IsResultIActionResult(_executor))
+                else if (IsResultIActionResult(executor))
                 {
-                    if (_executor.IsMethodAsync)
+                    if (executor.IsMethodAsync)
                     {
                         // Async method returning awaitable-of-IActionResult (e.g., Task<ViewResult>)
                         // We have to use ExecuteAsync because we don't know the awaitable's type at compile time.
-                        result = (IActionResult)await _executor.ExecuteAsync(controller, orderedArguments);
+                        result = (IActionResult)await executor.ExecuteAsync(controller, orderedArguments);
                     }
                     else
                     {
                         // Sync method returning IActionResult (e.g., ViewResult)
-                        result = (IActionResult)_executor.Execute(controller, orderedArguments);
+                        result = (IActionResult)executor.Execute(controller, orderedArguments);
                     }
 
                     if (result == null)
                     {
                         throw new InvalidOperationException(
-                            Resources.FormatActionResult_ActionReturnValueCannotBeNull(_executor.AsyncResultType ?? returnType));
+                            Resources.FormatActionResult_ActionReturnValueCannotBeNull(executor.AsyncResultType ?? returnType));
                     }
                 }
                 else if (!executor.IsMethodAsync)

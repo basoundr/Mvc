@@ -67,15 +67,17 @@ namespace Microsoft.AspNetCore.Mvc.Internal
 
                 var cacheState = _controllerActionInvokerCache.GetState(controllerContext);
 
-                context.Result = new ControllerActionInvoker(
+                var invoker = new ControllerActionInvoker(
                     _controllerFactory,
                     _parameterBinder,
                     _modelMetadataProvider,
                     _logger,
                     _diagnosticSource,
                     controllerContext,
-                    cacheState.Filters,
-                    cacheState.ActionMethodExecutor);
+                    cacheState.Filters);
+                invoker.Executor = cacheState.ActionMethodExecutor;
+
+                context.Result = invoker;
             }
         }
 

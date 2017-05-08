@@ -1,16 +1,12 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Reflection;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Internal;
 
 namespace Microsoft.AspNetCore.Mvc.Internal
 {
-    public static class ControllerActionExecutor
+    internal static class ControllerActionExecutor
     {
         public static object[] PrepareArguments(
             IDictionary<string, object> actionParameters,
@@ -27,9 +23,8 @@ namespace Microsoft.AspNetCore.Mvc.Internal
             for (var index = 0; index < count; index++)
             {
                 var parameterInfo = declaredParameterInfos[index];
-                object value;
 
-                if (!actionParameters.TryGetValue(parameterInfo.Name, out value))
+                if (!actionParameters.TryGetValue(parameterInfo.Name, out var value))
                 {
                     value = actionMethodExecutor.GetDefaultValueForParameter(index);
                 }
